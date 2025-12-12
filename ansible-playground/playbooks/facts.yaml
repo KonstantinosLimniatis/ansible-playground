@@ -1,0 +1,11 @@
+---
+- name: Show system facts
+  hosts: appservers
+  gather_facts: yes
+
+  tasks:
+    - name: Print OS and IP
+      debug:
+        msg:
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "IP: {{ ansible_default_ipv4.address }}"

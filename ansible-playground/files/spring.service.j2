@@ -1,0 +1,13 @@
+[Unit]
+Description=Spring Boot Real Estate App
+After=network.target
+
+[Service]
+WorkingDirectory={{ project_root }}
+ExecStart=/usr/bin/java -jar {{ project_root }}/target/{{ app_jar }}
+Restart=always
+User={{ ansible_user }}
+Environment=SPRING_PROFILES_ACTIVE=default
+
+[Install]
+WantedBy=multi-user.target

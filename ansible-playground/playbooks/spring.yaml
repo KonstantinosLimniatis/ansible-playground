@@ -1,0 +1,139 @@
+---
+- hosts: appservers
+
+  pre_tasks:
+    - name: Install Java
+      apt:
+        name: openjdk-21-jdk
+        state: present
+        update_cache: yes
+      become: yes
+
+    - name: Install PostgreSQL client tools (psql) with retries
+      apt:
+        name: postgresql-client
+        state: present
+        update_cache: yes
+      become: yes
+      retries: 5
+      delay: 10
+      register: result
+      until: result is succeeded
+
+  vars:
+    appdir: "{{ ansible_user_dir }}/spring-app"
+    project_root: "{{ appdir }}"
+    branch: "main"
+    app_jar: "ds-2025-0.0.1-SNAPSHOT.jar"
+
+  tasks:
+
+    - name: Debug appdir
+      debug:
+        msg: "App directory is {{ project_root }}"
+
+    - name: Clone the Spring repository (your repo)
+      git:
+        repo: "https://github.com/KonstantinosLimniatis/real-estate-backend.git"
+        dest: "{{ appdir }}"
+        version: "{{ branch }}"
+        force: yes
+
+    - name: Ensure mvnw is executable
+      file:
+        path: "{{ project_root }}/mvnw"
+        mode: '0755'
+
+    - name: Build the Spring application
+      command: ./mvnw package -Dmaven.test.skip
+      args:
+        chdir: "{{ project_root }}"
+      register: build_result
+      failed_when: false
+
+    - name: Fetch SHA-512 checksum for Maven 3.9.9
+      get_url:
+        url: https://downloads.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.zip.sha512
+        dest: /tmp/maven_sha512.txt
+        validate_certs: yes
+        force: yes
+      when: build_result.rc != 0
+
+    - name: Read the SHA-512 checksum from the file
+      command: cat /tmp/maven_sha512.txt
+      register: sha512_checksum
+      when: build_result.rc != 0
+
+    - name: Fix maven-wrapper.properties with correct SHA
+      replace:
+        path: "{{ project_root }}/.mvn/wrapper/maven-wrapper.properties"
+        regexp: '^distributionSha.*'
+        replace: "distributionSha512Sum={{ sha512_checksum.stdout }}"
+      when: build_result.rc != 0
+
+    - name: Retry build after SHA fix
+      command: ./mvnw package -Dmaven.test.skip
+      args:
+        chdir: "{{ project_root }}"
+      when: build_result.rc != 0
+
+    - name: Install Spring systemd service
+      template:
+        src: ../files/spring.service.j2
+        dest: /etc/systemd/system/spring.service
+      become: yes
+
+    - name: Always reload systemd and restart spring
+      block:
+        - name: Reload systemd
+          command: systemctl daemon-reload
+          become: yes
+
+        - name: Restart spring
+          service:
+            name: spring
+            state: restarted
+          become: yes
+      when: spring_restart_always | default(true)
+    
+    - name: Enable and start Spring service
+      service:
+        name: spring
+        state: started
+        enabled: yes
+      become: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        update_cache: yes
+      become: yes
+
+    - name: Copy Nginx config
+      template:
+        src: ../files/nginx.http.j2
+        dest: /etc/nginx/sites-available/spring
+      become: yes
+
+    - name: Enable Spring Nginx site
+      file:
+        src: /etc/nginx/sites-available/spring
+        dest: /etc/nginx/sites-enabled/spring
+        state: link
+      become: yes
+      notify: restart nginx
+
+    - name: Disable default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      become: yes
+      notify: restart nginx
+
+  handlers:
+
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+      become: yes

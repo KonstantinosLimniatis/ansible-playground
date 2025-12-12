@@ -1,0 +1,8 @@
+all:
+  children:
+    appservers:
+      hosts:
+        devops-vm:
+          ansible_host: 34.67.157.89
+          ansible_user: it2022054
+          ansible_python_interpreter: /usr/bin/python3

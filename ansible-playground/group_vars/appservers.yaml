@@ -1,0 +1,4 @@
+appdir: "{{ ansible_user_dir }}/spring-app"
+project_root: "{{ appdir }}"
+branch: "main"
+app_jar: "ds-2025-0.0.1-SNAPSHOT.jar"
