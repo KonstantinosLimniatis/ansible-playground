@@ -1,46 +1,56 @@
 ---
-- hosts: appservers
+- name: Deploy application using Docker Compose
+  hosts: appservers
   become: yes
 
   tasks:
-    - name: Install prerequisites
-      apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-          - lsb-release
-        state: present
-        update_cache: yes
 
-    - name: Ensure Docker key directory exists
-      file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
-
-    - name: Add Docker GPG key
-      shell: |
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-      args:
-        creates: /etc/apt/keyrings/docker.gpg
-
-    - name: Add Docker repository (correct syntax)
-      copy:
-        dest: /etc/apt/sources.list.d/docker.list
-        content: |
-          deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu jammy stable
-
-    - name: Update apt
-      apt:
-        update_cache: yes
+    # stops systemd
+    # - name: Stop systemd-based Spring service if running
+    #   service:
+    #     name: spring
+    #     state: stopped
+    #   ignore_errors: yes
 
     - name: Install Docker
       apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
+        name: docker.io
         state: present
+        update_cache: yes
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Install Docker Compose (v2 binary)
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.24.2/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+      register: docker_compose_download
+
+    - name: Create app directory
+      file:
+        path: /opt/spring-app
+        state: directory
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: ../files/docker-compose.yml
+        dest: /opt/spring-app/docker-compose.yml
+        mode: '0644'
+
+    - name: Run docker-compose (force rebuild)
+      command: docker-compose up -d --build
+      args:
+        chdir: /opt/spring-app
+      environment:
+        PATH: "/usr/local/bin:{{ ansible_env.PATH }}"
