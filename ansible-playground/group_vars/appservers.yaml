@@ -1,4 +1,47 @@
 appdir: "{{ ansible_user_dir }}/spring-app"
 project_root: "{{ appdir }}"
 branch: "main"
+repo_url: "https://github.com/KonstantinosLimniatis/real-estate-backend.git"
 app_jar: "ds-2025-0.0.1-SNAPSHOT.jar"
+
+spring_service_name: "spring"
+spring_env_file: "/etc/default/{{ spring_service_name }}"
+spring_profile: "prod"
+spring_http_port: 8080
+
+db_host: "dpg-d4nij3h5pdvs73cn7ri0-a.frankfurt-postgres.render.com"
+db_port: 5432
+db_name: "dsdb_x568"
+db_user: "dbuser"
+db_password: "iP7KK4xhIUFD0ZSUntYCMRmYf2z6BzNU"
+
+mailhog_smtp_port: 1025
+mailhog_ui_port: 8025
+spring_mail_host: ""
+spring_mail_port: ""
+spring_mail_username: ""
+spring_mail_password: ""
+spring_mail_smtp_auth: "false"
+spring_mail_starttls: "false"
+
+spring_env:
+  SPRING_PROFILES_ACTIVE: "{{ spring_profile }}"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ db_host }}:{{ db_port }}/{{ db_name }}"
+  SPRING_DATASOURCE_USERNAME: "{{ db_user }}"
+  SPRING_DATASOURCE_PASSWORD: "{{ db_password }}"
+  SPRING_MAIL_HOST: "{{ spring_mail_host }}"
+  SPRING_MAIL_PORT: "{{ spring_mail_port }}"
+  SPRING_MAIL_USERNAME: "{{ spring_mail_username }}"
+  SPRING_MAIL_PASSWORD: "{{ spring_mail_password }}"
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "{{ spring_mail_smtp_auth }}"
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "{{ spring_mail_starttls }}"
+
+docker_compose_root: "/opt/spring-app"
+docker_repo_dir: "{{ docker_compose_root }}/app"
+docker_compose_env_overrides:
+  SPRING_MAIL_HOST: "mailhog"
+  SPRING_MAIL_PORT: "{{ mailhog_smtp_port }}"
+  SPRING_MAIL_USERNAME: ""
+  SPRING_MAIL_PASSWORD: ""
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"

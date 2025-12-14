@@ -7,7 +7,7 @@ WorkingDirectory={{ project_root }}
 ExecStart=/usr/bin/java -jar {{ project_root }}/target/{{ app_jar }}
 Restart=always
 User={{ ansible_user }}
-Environment=SPRING_PROFILES_ACTIVE=default
+EnvironmentFile={{ spring_env_file }}
 
 [Install]
 WantedBy=multi-user.target

@@ -20,12 +20,6 @@
       register: result
       until: result is succeeded
 
-  vars:
-    appdir: "{{ ansible_user_dir }}/spring-app"
-    project_root: "{{ appdir }}"
-    branch: "main"
-    app_jar: "ds-2025-0.0.1-SNAPSHOT.jar"
-
   tasks:
 
     - name: Debug appdir
@@ -34,10 +28,20 @@
 
     - name: Clone the Spring repository (your repo)
       git:
-        repo: "https://github.com/KonstantinosLimniatis/real-estate-backend.git"
+        repo: "{{ repo_url }}"
         dest: "{{ appdir }}"
         version: "{{ branch }}"
         force: yes
+
+    - name: Deploy Spring environment file
+      template:
+        src: ../files/spring.env.j2
+        dest: "{{ spring_env_file }}"
+        owner: root
+        group: root
+        mode: '0640'
+      become: yes
+      notify: restart spring
 
     - name: Ensure mvnw is executable
       file:
@@ -80,8 +84,9 @@
     - name: Install Spring systemd service
       template:
         src: ../files/spring.service.j2
-        dest: /etc/systemd/system/spring.service
+        dest: "/etc/systemd/system/{{ spring_service_name }}.service"
       become: yes
+      notify: restart spring
 
     - name: Always reload systemd and restart spring
       block:
@@ -91,14 +96,14 @@
 
         - name: Restart spring
           service:
-            name: spring
+            name: "{{ spring_service_name }}"
             state: restarted
           become: yes
       when: spring_restart_always | default(true)
     
     - name: Enable and start Spring service
       service:
-        name: spring
+        name: "{{ spring_service_name }}"
         state: started
         enabled: yes
       become: yes
@@ -131,6 +136,12 @@
       notify: restart nginx
 
   handlers:
+
+    - name: restart spring
+      service:
+        name: "{{ spring_service_name }}"
+        state: restarted
+      become: yes
 
     - name: restart nginx
       service:

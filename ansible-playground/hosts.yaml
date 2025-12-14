@@ -3,6 +3,7 @@ all:
     appservers:
       hosts:
         devops-vm:
-          ansible_host: 34.67.157.89
+          ansible_host: 34.68.122.247
           ansible_user: it2022054
           ansible_python_interpreter: /usr/bin/python3
+          ansible_ssh_private_key_file: /home/konstantinos/.ssh/ansible_vm2
